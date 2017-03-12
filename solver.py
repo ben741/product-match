@@ -257,8 +257,8 @@ def match_all(listings_file_name, products_file_name, results_file_name):
     """ attempt to find products that match each listing in the listings file
 
     Args:
-        listings_path (string): name of the file containing listing objects
-        products_file_name (string): name of file containing product objects
+        listings_file_name (string): name of the file containing listings
+        products_file_name (string): name of file containing products
         results_file_name (string): name of file to write results to
 
     Returns:
