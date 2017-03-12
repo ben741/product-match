@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     products_by_man = solver.load_products('products.txt')
     # load all of the listings, so that we can later pick randomly from them
-    with open('listings.txt') as f:
+    with io.open("listings.txt", 'r', encoding='utf-8') as f:
         for line in f:
             listings.append(json.loads(line))
 

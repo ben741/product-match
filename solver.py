@@ -187,7 +187,7 @@ def load_products(filename):
     # use like model_words[man][word] = count
     model_words = defaultdict(lambda: defaultdict(int))
 
-    with open(filename) as products_file:
+    with io.open(filename, 'r', encoding='utf-8') as products_file:
         for line in products_file:
             data = json.loads(line)
             
@@ -267,7 +267,7 @@ def match_all(listings_file_name, products_file_name, results_file_name):
 
     print("Searching listings...")
     # look up every listing in the listings file
-    with open(listings_file_name) as listings_file:
+    with io.open(listings_file_name, 'r', encoding='utf-8') as listings_file:
         for line in listings_file:
             listing = json.loads(line)
             product_name = match_listing(listing, products_by_man)
