@@ -30,11 +30,11 @@ if __name__ == '__main__':
 
             result = solver.match_listing(listing, products_by_man)
             if result == product_name:
-                score+=1
+                score += 1
             else:
                 print('-'*36 + " Failed " + '-'*36)
                 print('Listing:\n' + listing['title'])
                 print('Manufacturer: '+listing['manufacturer'])
                 print(result + ' -> ' + product_name)
 
-        print("Score: %d/%d = %f"%(score,count, (100. * score)/count))
+        print("Score: %d/%d = %f"%(score, count, (100. * score)/count))
