@@ -11,7 +11,7 @@ correct, or else provides the correct answer.
 """
 
 import io
-from collections import defaultdict, OrderedDict
+from collections import OrderedDict
 import random
 import json
 
@@ -21,13 +21,14 @@ if __name__ == '__main__':
     listings = []
 
     products_by_man = solver.load_products('products.txt')
+
     # load all of the listings, so that we can later pick randomly from them
     with io.open("listings.txt", 'r', encoding='utf-8') as f:
         for line in f:
             listings.append(json.loads(line))
 
     with io.open('test_data.txt', 'a', encoding='utf-8') as test_file:
-        while (True):
+        while True:
             listing = listings.pop(random.randint(0, len(listings)-1))
             print('Listing:\n' + listing['title'])
             print('Manufacturer: '+listing['manufacturer'])

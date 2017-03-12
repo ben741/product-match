@@ -5,21 +5,33 @@ solver.py
 A solution to the Sortable coding challenge. Attempts to match listings
 to the product they're talking about.
 
-This meme pretty much summarises the design philosophy behind this code:
+This meme pretty much summarises the design philosophy behind the code:
 http://imgur.com/a/WRkmo
 
-Challenges:
-- Hyphens can be used in many ways. They may be:
-    1. part of the model #
-    2. Replacing a space within a field
-    3. As a delimiter between manufacturer and family or family and model
-    4. Added in the middle of a compound word
+The basic structure is:
+    1. Load in all the product info. Put it in a dictionary keyed by the
+    manufacturer.
+    2. Slightly adjust the model names in the product info, by removing
+        overly-degenerate prefixes that sellers are likely to omit, and
+        conversely adding the family name if the model name is too simple
+        (i.e.) just a number
+    3. For each listing, find the manufacturer either in the manufacturer tag
+        or as the first word in the title
+    4. Try to match each model name by that manufacturer. Use a regex to
+        ignore extra hyphens and spaces, and to make sure to match entire
+        numbers
+    5. If there are multiple matches, fail: this is probably an accessory that
+        fits many products
+    6. Finally, assemble the results by product_name and write to file
+
 
 Known sources of misses:
-- products with revisions may not be recognized - i.e. X100 and X100a will
-not be seen as the same
-- no attempt is made to correct for typos
-- Abbreviated company names, such as HP and GE fail
+- products with revisions are taken as the same - i.e. X100 and X100a will
+both match X100 (unless there is also an X100a product). This may not always
+be correct
+- no attempt is made to correct for typos - I only address variations in how
+whitespace and hyphens are used
+- Abbreviated company names, such as HP and GE aren't dealt with systematically
 
 Known sources of false positives:
 - accessories that fit only one model from the product list can easily cause
@@ -29,7 +41,7 @@ or keywords (hard) very different from others in the group.
 - results do include bundles of main product + accessories. It's not clear
 from the problem definition whether that is okay.
 
-Some interesting failed cases:
+Interesting failed cases:
 - {"product_name":"Ricoh_GXR_(A12)","manufacturer":"Ricoh","model":"GXR (A12)"}
 It's unclear whether this product refers to GXR (the body) or A12 (the module),
 which are found separately in the listings.
@@ -66,6 +78,9 @@ def get_manufacturer(man):
 
         # if there are multiple words, replace by their acronym
         # i.e. Hewlett Packard -> HP
+        # this actually didn't work so well, since stuff would happen like
+        # Hewlett-Packard GMBH -> HPG, which doesn't help at all
+        #
       #  words = man.split()
      #   if len(words) > 1:
      #       man = ''.join([word[0] for word in words])
@@ -73,16 +88,6 @@ def get_manufacturer(man):
 
     return man[:min(4, len(man))]
 
-
-
-# remove unnecessary hyphens and spaces
-def cleanup_family(family):
-    """ converts the string to upper space, removes hyphens and spaces"""
-    
-    family = family.upper()
-    family = family.replace('-', '')
-    family = family.replace(' ', '')
-    return family
 
 def generate_regex(target):
     """ Generate a regular expression that matches the target string, ignoring
@@ -169,48 +174,47 @@ def match_listing(listing, products_by_man):
         return 'None'
 
 def load_products(filename):
-    """ read in the products file, and return them in a dictionary keyed by 
+    """ read in the products file, and return them in a dictionary keyed by
     a shortened version of their manufacturer string
-    
+
     Args:
         filename (string): /path/to/file where the product information is
             stored in JSON format
-            
-    returns: 
+
+    returns:
         products_by_manufacturer (defaultdict): dictionary of lists of product
-            dictionaries, keyed by a shortened version of their manufacturer 
-            string.     
+            dictionaries, keyed by a shortened version of their manufacturer
+            string.
     """
-    
+
     products_by_manufacturer = defaultdict(list)
-    
+
     # use like model_words[man][word] = count
     model_words = defaultdict(lambda: defaultdict(int))
 
     with io.open(filename, 'r', encoding='utf-8') as products_file:
         for line in products_file:
             data = json.loads(line)
-            
+
             man = get_manufacturer(data['manufacturer'])
 
+            # if the model number is literally just a number, put it together
+            # with the family name, since it's very likely that it would
+            # be written that way, and we avoid false positives if the number
+            # is used in some other context (like, say, focal length)
             if data['model'].isdigit() and 'family' in data:
                 data['model'] = data['family'] + ' ' + data['model']
-                
+
             model = data['model']
 
-            
             # treat hyphens as spaces only if there are no spaces
             if ' ' in model:
                 word_list = model.split(' ')
             else:
                 word_list = model.split('-')
-                
+
             for word in word_list:
                 model_words[man][word] += 1
-            # if the model number is literally just a number, put it together
-            # with the family name, since it's very likely that it would
-            # be written that way, and we avoid false positives if the number
-            # is used in some other context (like, say, focal length)
 
             products_by_manufacturer[man].append(data)
 
@@ -221,30 +225,32 @@ def load_products(filename):
     for man in products_by_manufacturer:
         for product in products_by_manufacturer[man]:
             model = product['model']
-            
+
             # treat hyphens as spaces only if there are no spaces
             if ' ' in model:
                 word_list = model.split(' ')
             else:
                 word_list = model.split('-')
-                
-            if len(word_list) > 1:            
+
+            if len(word_list) > 1:
                 has_unique = False
-                
+
                 # check if any word is unique, and also not just a number
                 for word in word_list:
                     if model_words[man][word] == 1 and not word.isdigit():
                         has_unique = True
-                
+
                 if has_unique:
                     new_model = ''
                     for word in word_list:
-                        if model_words[man][word]  < 5:
+                        if model_words[man][word] < 5:
                             new_model = new_model + word
                     product['model'] = new_model
-                    
+                # else if there is no single unique word, keep everything to be
+                # on the safe side
+
             product['regex'] = generate_regex(product['model'])
-                
+
     return products_by_manufacturer
 
 def match_all(listings_file_name, products_file_name, results_file_name):
@@ -262,11 +268,9 @@ def match_all(listings_file_name, products_file_name, results_file_name):
     results = defaultdict(list)
 
     print("Loading product information...")
-    # load the product information
     products_by_man = load_products(products_file_name)
 
     print("Searching listings...")
-    # look up every listing in the listings file
     with io.open(listings_file_name, 'r', encoding='utf-8') as listings_file:
         for line in listings_file:
             listing = json.loads(line)
@@ -275,8 +279,6 @@ def match_all(listings_file_name, products_file_name, results_file_name):
                 results[product_name].append(listing)
 
     print("Writing results file...")
-    
-    # now need to output the result
     with io.open(results_file_name, 'w', encoding='utf-8') as result_file:
         for key in results:
             if len(results[key]) > 0:
@@ -288,12 +290,12 @@ def match_all(listings_file_name, products_file_name, results_file_name):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("-l", "--listings", default = 'listings.txt', 
+    parser.add_argument("-l", "--listings", default='listings.txt',
                         help="input listings file")
-    parser.add_argument("-p", "--products", default = 'products.txt', 
+    parser.add_argument("-p", "--products", default='products.txt',
                         help="input products file")
-    parser.add_argument("-r", "--results", default = 'results.txt', 
+    parser.add_argument("-r", "--results", default='results.txt',
                         help="output results file")
     args = parser.parse_args()
-    
+
     match_all(args.listings, args.products, args.results)
