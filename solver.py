@@ -235,10 +235,12 @@ def load_products(filename):
             if len(word_list) > 1:
                 has_unique = False
 
-                # check if any word is unique, and also not just a number
+                # check if any word is unique, and also not just a number or
+                # one letter long
                 for word in word_list:
                     if model_words[man][word] == 1 and not word.isdigit():
-                        has_unique = True
+                        if len(word) > 1:
+                            has_unique = True
 
                 if has_unique:
                     new_model = ''
