@@ -19,9 +19,11 @@ The basic structure is:
         or as the first word in the title
     4. Try to match each model name by that manufacturer. Use a regex to
         ignore extra hyphens and spaces, and to make sure to match entire
-        numbers
+        numbers. Only match to the first 6 words in the title, since that's
+        almost always where the model name is
     5. If there are multiple matches, fail: this is probably an accessory that
-        fits many products
+        fits many products (this probably doesn't do much anymore since it only
+        looks at the first few words now)
     6. Finally, assemble the results by product_name and write to file
 
 
@@ -120,7 +122,7 @@ def generate_regex(target):
 
     return re.compile(match_string)
 
-def match_listing(listing, products_by_man):
+def match_listing(listing, products_by_man, num_words = 6):
     """ attempt to find a product that matches a single listing
 
     Args:
@@ -146,6 +148,9 @@ def match_listing(listing, products_by_man):
     # second, we makes list of products whose model number is
     # somewhere in the title. This may result in multiple matches
     for product in products_by_man[man]:
+        # throw out everything except the first few words
+        title = ' '.join(title.split()[:num_words])
+
         if len(re.findall(product['regex'], title.upper())) > 0:
             matches.append(product)
 
