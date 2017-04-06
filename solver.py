@@ -144,7 +144,12 @@ def match_listing(listing, products_by_man, num_words = 6):
         man = get_manufacturer(title.split()[0])
 
     matches = []
-
+    
+    ###### This is necessary in order to avoid having the default dictionary 
+    ###### generate an emptry list at man
+    if man not in products_by_man:
+        return "None"
+        
     # second, we makes list of products whose model number is
     # somewhere in the title. This may result in multiple matches
     for product in products_by_man[man]:
